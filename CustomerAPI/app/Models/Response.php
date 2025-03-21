@@ -21,4 +21,19 @@ class Response extends Model
         'user_id',
         'content',
     ];
+      /**
+     * Get the ticket that this response belongs to
+     */
+    public function ticket(): BelongsTo
+    {
+        return $this->belongsTo(Ticket::class);
+    }
+
+    /**
+     * Get the user who created this response
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 }

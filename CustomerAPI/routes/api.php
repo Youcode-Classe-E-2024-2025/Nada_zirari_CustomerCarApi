@@ -15,5 +15,6 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('tickets', TicketController::class);
     Route::apiResource('tickets.responses', ResponseController::class);
+    Route::apiResource('responses', ResponseController::class);
     Route::post('/logout', [AuthController::class, 'logout']);
 });
