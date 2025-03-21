@@ -1,14 +1,28 @@
 <?php
 namespace App\Services;
 
-use App\Models\Response;
+use App\Models\Ticket;
 
-class ResponseService {
-    public function addResponse(array $data) {
-        return Response::create($data);
+class TicketService {
+    public function createTicket(array $data) {
+        return Ticket::create($data);
     }
 
-    public function getResponsesForTicket($ticketId) {
-        return Response::where('ticket_id', $ticketId)->get();
+    public function getTickets() {
+        return Ticket::all();
+    }
+
+    public function getTicketById($id) {
+        return Ticket::findOrFail($id);
+    }
+
+    public function updateTicket($id, array $data) {
+        $ticket = Ticket::findOrFail($id);
+        $ticket->update($data);
+        return $ticket;
+    }
+
+    public function deleteTicket($id) {
+        Ticket::destroy($id);
     }
 }
