@@ -15,7 +15,15 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('tickets', TicketController::class);
     Route::apiResource('tickets.responses', ResponseController::class);
+
+    Route::get('tickets/{ticketId}/responses', [ResponseController::class, 'index']);
+    Route::post('tickets/{ticketId}/responses', [ResponseController::class, 'store']);
+
     Route::apiResource('responses', ResponseController::class);
+
+    Route::put('responses/{id}', [ResponseController::class, 'update']);
+    Route::delete('responses/{id}', [ResponseController::class, 'destroy']);
+    
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
 

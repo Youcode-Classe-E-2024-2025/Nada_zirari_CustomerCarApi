@@ -1,6 +1,6 @@
 <?php
 namespace App\Services;
-
+use App\Models\Ticket;
 use App\Models\Response;
 use Illuminate\Support\Facades\Auth;
 
