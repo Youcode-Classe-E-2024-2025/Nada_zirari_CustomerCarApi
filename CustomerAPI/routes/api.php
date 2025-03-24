@@ -17,4 +17,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('tickets.responses', ResponseController::class);
     Route::apiResource('responses', ResponseController::class);
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/user', [AuthController::class, 'user']);
+
 });
