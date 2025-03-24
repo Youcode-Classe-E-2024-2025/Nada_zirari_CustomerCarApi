@@ -173,6 +173,27 @@ class AuthController extends Controller
             'token_type' => 'Bearer',
         ]);
     }
+
+     /**
+     * @OA\Post(
+     *     path="/api/logout",
+     *     summary="Déconnecter un utilisateur",
+     *     tags={"Authentication"},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Déconnexion réussie",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="User logged out successfully")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Non autorisé"
+     *     ),
+     *     security={{"bearerAuth": {}}}
+     * )
+     */
+
     public function logout(Request $request): JsonResponse
     {
         $request->user()->currentAccessToken()->delete();
@@ -182,6 +203,34 @@ class AuthController extends Controller
         ]);
     }
 
+
+    /**
+     * @OA\Get(
+     *     path="/api/user",
+     *     summary="Obtenir les informations de l'utilisateur connecté",
+     *     tags={"Authentication"},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Informations de l'utilisateur récupérées avec succès",
+     *         @OA\JsonContent(
+     *             @OA\Property(
+     *                 property="user",
+     *                 type="object",
+     *                 @OA\Property(property="id", type="integer", example=1),
+     *                 @OA\Property(property="name", type="string", example="John Doe"),
+     *                 @OA\Property(property="email", type="string", example="john@example.com"),
+     *                 @OA\Property(property="created_at", type="string", format="date-time"),
+     *                 @OA\Property(property="updated_at", type="string", format="date-time")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Non autorisé"
+     *     ),
+     *     security={{"bearerAuth": {}}}
+     * )
+     */
     public function user(Request $request): JsonResponse
     {
         return response()->json([
