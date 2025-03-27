@@ -2,11 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Response;
+use App\Http\Requests\StoreResponseRequest;
+use App\Http\Requests\UpdateResponseRequest;
 use App\Services\ResponseService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
  * @OA\Tag(
@@ -14,7 +15,6 @@ use Illuminate\Http\JsonResponse;
  *     description="API Endpoints pour la gestion des réponses aux tickets"
  * )
  */
-
 class ResponseController extends Controller
 {
     protected $responseService;
@@ -27,7 +27,7 @@ class ResponseController extends Controller
         $this->responseService = $responseService;
     }
 
- /**
+    /**
      * @OA\Get(
      *     path="/api/responses",
      *     summary="Récupérer la liste des réponses",
@@ -64,7 +64,7 @@ class ResponseController extends Controller
         return response()->json(['data' => $responses], 200);
     }
 
- /**
+    /**
      * @OA\Get(
      *     path="/api/responses/{id}",
      *     summary="Récupérer les détails d'une réponse",
@@ -117,7 +117,7 @@ class ResponseController extends Controller
         return response()->json(['data' => $response], 200);
     }
 
- /**
+    /**
      * @OA\Post(
      *     path="/api/responses",
      *     summary="Créer une nouvelle réponse",
@@ -166,20 +166,29 @@ class ResponseController extends Controller
      *     security={{"bearerAuth": {}}}
      * )
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreResponseRequest $request): JsonResponse
     {
-        $validatedData = $request->validate([
-            'ticket_id' => 'required|exists:tickets,id',
-            'content' => 'required|string',
-        ]);
-        
-        $response = $this->responseService->createResponse($validatedData);
-        
-        return response()->json(['message' => 'Response created successfully', 'data' => $response], 201);
+        try {
+            $validatedData = $request->validated();
+            $response = $this->responseService->createResponse($validatedData);
+            
+            return response()->json([
+                'message' => 'Response created successfully', 
+                'data' => $response
+            ], 201);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'message' => $e->getMessage()
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => $e->getMessage()
+            ], $e->getCode() ?: 500);
+        }
     }
 
-
-     /**
+    /**
+     
      * @OA\Put(
      *     path="/api/responses/{id}",
      *     summary="Mettre à jour une réponse",
@@ -241,23 +250,28 @@ class ResponseController extends Controller
      *     security={{"bearerAuth": {}}}
      * )
      */
-
-    public function update(Request $request, $id): JsonResponse
+    public function update(UpdateResponseRequest $request, $id): JsonResponse
     {
-        $validatedData = $request->validate([
-            'content' => 'required|string',
-        ]);
-        
-        $updated = $this->responseService->updateResponse($id, $validatedData);
-        
-        if (!$updated) {
-            return response()->json(['message' => 'Response not found'], 404);
+        try {
+            $validatedData = $request->validated();
+            $updated = $this->responseService->updateResponse($id, $validatedData);
+            
+            if (!$updated) {
+                return response()->json(['message' => 'Response not found'], 404);
+            }
+            
+            return response()->json([
+                'message' => 'Response updated successfully', 
+                'data' => $updated
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => $e->getMessage()
+            ], $e->getCode() ?: 500);
         }
-        
-        return response()->json(['message' => 'Response updated successfully', 'data' => $updated], 200);
     }
 
-/**
+    /**
      * @OA\Delete(
      *     path="/api/responses/{id}",
      *     summary="Supprimer une réponse",
@@ -292,16 +306,18 @@ class ResponseController extends Controller
      */
     public function destroy($id): JsonResponse
     {
-        $deleted = $this->responseService->deleteResponse($id);
-        
-        if (!$deleted) {
-            return response()->json(['message' => 'Response not found'], 404);
+        try {
+            $deleted = $this->responseService->deleteResponse($id);
+            
+            if (!$deleted) {
+                return response()->json(['message' => 'Response not found'], 404);
+            }
+            
+            return response()->json(['message' => 'Response deleted successfully'], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => $e->getMessage()
+            ], $e->getCode() ?: 500);
         }
-        
-        return response()->json(['message' => 'Response deleted successfully'], 200);
     }
-
 }
-
-
-
