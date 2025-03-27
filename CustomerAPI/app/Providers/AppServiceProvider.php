@@ -1,4 +1,3 @@
-php artisan make:provider AppServiceProvider
 <?php
 
 namespace App\Providers;
