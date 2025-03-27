@@ -1,57 +1,137 @@
 <?php
+
 namespace App\Services;
-use App\Models\Ticket;
-use App\Models\Response;
+
+use App\Repositories\ResponseRepository;
+use App\Repositories\TicketRepository;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
-class ResponseService {
+class ResponseService
+{
+    protected $responseRepository;
+    protected $ticketRepository;
 
-
-
-    public function getAllResponses()
-    {
-        return Response::with('ticket')->get();
+    public function __construct(
+        ResponseRepository $responseRepository,
+        TicketRepository $ticketRepository
+    ) {
+        $this->responseRepository = $responseRepository;
+        $this->ticketRepository = $ticketRepository;
     }
 
-public function getResponseById($id)
+    /**
+     * Get all responses
+     *
+     * @return array
+     */
+    public function getAllResponses(): array
     {
-        return Response::with('ticket')->find($id);
+        return $this->responseRepository->getAll()->toArray();
     }
 
-
-    public function createResponse(array $data)
+    /**
+     * Get responses for a specific ticket
+     *
+     * @param int $ticketId
+     * @return array
+     * @throws ModelNotFoundException
+     */
+    public function getResponsesByTicketId(int $ticketId): array
     {
-        $data['user_id'] = Auth::id();
-        return Response::create($data);
+        // Check if ticket exists
+        $ticket = $this->ticketRepository->findById($ticketId);
+        if (!$ticket) {
+            throw new ModelNotFoundException('Ticket not found');
+        }
+        
+        return $this->responseRepository->getByTicketId($ticketId)->toArray();
     }
 
-public function updateResponse($id, array $data)
+    /**
+     * Get a response by ID
+     *
+     * @param int $id
+     * @return array|null
+     */
+    public function getResponseById(int $id): ?array
     {
-        $response = Response::find($id);
+        $response = $this->responseRepository->findById($id);
         
         if (!$response) {
             return null;
         }
         
-        $response->update($data);
-        return $response;
+        return $response->toArray();
     }
 
-    public function deleteResponse($id)
+    /**
+     * Create a new response
+     *
+     * @param array $data
+     * @return array
+     * @throws ModelNotFoundException
+     */
+    public function createResponse(array $data): array
     {
-        $response = Response::find($id);
+        // Check if ticket exists
+        $ticket = $this->ticketRepository->findById($data['ticket_id']);
+        if (!$ticket) {
+            throw new ModelNotFoundException('Ticket not found');
+        }
+        
+        // Add user_id to data
+        $data['user_id'] = Auth::id();
+        
+        $response = $this->responseRepository->create($data);
+        
+        return $response->toArray();
+    }
+
+    /**
+     * Update a response
+     *
+     * @param int $id
+     * @param array $data
+     * @return array|null
+     */
+    public function updateResponse(int $id, array $data): ?array
+    {
+        $response = $this->responseRepository->findById($id);
+        
+        if (!$response) {
+            return null;
+        }
+        
+        // Check if user has permission to update this response
+        if ($response->user_id !== Auth::id() && !(Auth::user()->isAdmin ?? false)) {
+            throw new \Exception('You do not have permission to update this response', 403);
+        }
+        
+        $updatedResponse = $this->responseRepository->update($id, $data);
+        
+        return $updatedResponse ? $updatedResponse->toArray() : null;
+    }
+
+    /**
+     * Delete a response
+     *
+     * @param int $id
+     * @return bool
+     */
+    public function deleteResponse(int $id): bool
+    {
+        $response = $this->responseRepository->findById($id);
         
         if (!$response) {
             return false;
         }
         
-        return $response->delete();
+        // Check if user has permission to delete this response
+        if ($response->user_id !== Auth::id() && !(Auth::user()->isAdmin ?? false)) {
+            throw new \Exception('You do not have permission to delete this response', 403);
+        }
+        
+        return $this->responseRepository->delete($id);
     }
-    // public function addResponse(array $data) {
-    //     return Response::create($data);
-    // }
-
-    // public function getResponsesForTicket($ticketId) {
-    //     return Response::where('ticket_id', $ticketId)->get();
-    // }
 }
