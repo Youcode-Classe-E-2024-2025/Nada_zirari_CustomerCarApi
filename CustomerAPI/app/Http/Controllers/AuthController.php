@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
-use Illuminate\Http\Request;
+use App\Http\Requests\LoginRequest;
+use App\Http\Requests\RegisterRequest;
+use App\Services\AuthService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Http\Request;
+
 /**
  * @OA\Info(
  *     title="Customer Care API - Authentication",
@@ -28,6 +28,12 @@ use Illuminate\Validation\ValidationException;
  */
 class AuthController extends Controller
 {
+    protected $authService;
+
+    public function __construct(AuthService $authService)
+    {
+        $this->authService = $authService;
+    }
 
     /**
      * @OA\Post(
@@ -76,27 +82,17 @@ class AuthController extends Controller
      *     )
      * )
      */
-    public function register(Request $request): JsonResponse
+    public function register(RegisterRequest $request): JsonResponse
     {
-        $validatedData = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
-        ]);
-
-        $user = User::create([
-            'name' => $validatedData['name'],
-            'email' => $validatedData['email'],
-            'password' => Hash::make($validatedData['password']),
-        ]);
-
-        $token = $user->createToken('auth_token')->plainTextToken;
+        $validatedData = $request->validated();
+        
+        $result = $this->authService->register($validatedData);
 
         return response()->json([
             'message' => 'User registered successfully',
-            'user' => $user,
-            'access_token' => $token,
-            'token_type' => 'Bearer',
+            'user' => $result['user'],
+            'access_token' => $result['access_token'],
+            'token_type' => $result['token_type'],
         ], 201);
     }
 
@@ -146,35 +142,22 @@ class AuthController extends Controller
      *     )
      * )
      */
-
-    public function login(Request $request): JsonResponse
+    public function login(LoginRequest $request): JsonResponse
     {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
-            'device_name' => 'nullable|string',
-        ]);
-
-        $user = User::where('email', $request->email)->first();
-
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
-            ]);
-        }
-
-        $deviceName = $request->device_name ?? $request->userAgent() ?? 'Unknown Device';
-        $token = $user->createToken($deviceName)->plainTextToken;
+        $validatedData = $request->validated();
+        $validatedData['user_agent'] = $request->userAgent();
+        
+        $result = $this->authService->login($validatedData);
 
         return response()->json([
             'message' => 'User logged in successfully',
-            'user' => $user,
-            'access_token' => $token,
-            'token_type' => 'Bearer',
+            'user' => $result['user'],
+            'access_token' => $result['access_token'],
+            'token_type' => $result['token_type'],
         ]);
     }
 
-     /**
+    /**
      * @OA\Post(
      *     path="/api/logout",
      *     summary="Déconnecter un utilisateur",
@@ -193,16 +176,14 @@ class AuthController extends Controller
      *     security={{"bearerAuth": {}}}
      * )
      */
-
     public function logout(Request $request): JsonResponse
     {
-        $request->user()->currentAccessToken()->delete();
+        $this->authService->logout($request->user());
 
         return response()->json([
             'message' => 'User logged out successfully',
         ]);
     }
-
 
     /**
      * @OA\Get(
