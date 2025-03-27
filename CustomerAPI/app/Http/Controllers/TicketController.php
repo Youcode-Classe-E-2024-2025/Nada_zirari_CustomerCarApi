@@ -2,15 +2,16 @@
 
 namespace App\Http\Controllers;
 
-
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreTicketRequest;
+use App\Http\Requests\UpdateTicketRequest;
 use App\Services\TicketService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+
 class TicketController extends Controller
 {
-   
     protected $ticketService;
 
     public function __construct(TicketService $ticketService)
@@ -18,7 +19,7 @@ class TicketController extends Controller
         $this->ticketService = $ticketService;
     }
 
- /**
+    /**
      * @OA\Get(
      *     path="/api/tickets",
      *     summary="Récupérer la liste des tickets",
@@ -66,12 +67,13 @@ class TicketController extends Controller
      *     security={{"bearerAuth": {}}}
      * )
      */
-    public function index()
+    public function index(Request $request): JsonResponse
     {
-        return response()->json($this->ticketService->getTickets(), 200);
+        $perPage = $request->input('per_page', 10);
+        return response()->json($this->ticketService->getTickets($perPage), 200);
     }
 
-  /**
+    /**
      * @OA\Post(
      *     path="/api/tickets",
      *     summary="Créer un nouveau ticket",
@@ -126,21 +128,15 @@ class TicketController extends Controller
      *     security={{"bearerAuth": {}}}
      * )
      */
-    public function store(Request $request, TicketService $ticketService)
-{
-    $validated = $request->validate([
-        'title' => 'required|string|max:255',
-        'description' => 'required|string',
-    ]);
-
-    $ticket = $ticketService->createTicket([
-        'user_id' => auth()->id(),
-        'title' => $validated['title'],
-        'description' => $validated['description'],
-    ]);
-
-    return response()->json($ticket, 201);
-}
+    public function store(StoreTicketRequest $request): JsonResponse
+    {
+        $validatedData = $request->validated();
+        $validatedData['user_id'] = auth()->id();
+        
+        $result = $this->ticketService->createTicket($validatedData);
+        
+        return response()->json($result, 201);
+    }
 
     /**
      * @OA\Get(
@@ -202,12 +198,24 @@ class TicketController extends Controller
      *     security={{"bearerAuth": {}}}
      * )
      */
-public function show($id)
+    public function show($id): JsonResponse
     {
-        return response()->json($this->ticketService->getTicketById($id), 200);
+        try {
+            return response()->json($this->ticketService->getTicketById($id), 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ticket not found'
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], $e->getCode() ?: 500);
+        }
     }
 
-/**
+    /**
      * @OA\Put(
      *     path="/api/tickets/{id}",
      *     summary="Mettre à jour un ticket",
@@ -268,19 +276,25 @@ public function show($id)
      *     security={{"bearerAuth": {}}}
      * )
      */
-public function update(Request $request, $id)
-{
-    $request->validate([
-        'title' => 'sometimes|string|max:255',
-        'description' => 'sometimes|string',
-        'status' => 'sometimes|in:open,in_progress,closed',
-        'assigned_to' => 'nullable|exists:users,id',
-    ]);
+    public function update(UpdateTicketRequest $request, $id): JsonResponse
+    {
+        try {
+            $validatedData = $request->validated();
+            return response()->json($this->ticketService->updateTicket($id, $validatedData), 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ticket not found'
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], $e->getCode() ?: 500);
+        }
+    }
 
-    return response()->json($this->ticketService->updateTicket($id, $request->all()), 200);
-}
-
- /**
+    /**
      * @OA\Delete(
      *     path="/api/tickets/{id}",
      *     summary="Supprimer un ticket",
@@ -309,13 +323,27 @@ public function update(Request $request, $id)
      *     @OA\Response(
      *         response=401,
      *         description="Non autorisé"
-     *  *     ),
+     *     ),
      *     security={{"bearerAuth": {}}}
      * )
      */
-public function destroy($id)
+    public function destroy($id): JsonResponse
     {
-        $this->ticketService->deleteTicket($id);
-        return response()->json(['message' => 'Ticket supprimé avec succès'], 200);
+        try {
+            $result = $this->ticketService->deleteTicket($id);
+            return response()->json([
+                'message' => 'Ticket supprimé avec succès'
+            ], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ticket not found'
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], $e->getCode() ?: 500);
+        }
     }
 }
