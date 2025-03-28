@@ -287,12 +287,13 @@ class TicketController extends Controller
                 'message' => 'Ticket not found'
             ], 404);
         } catch (\Exception $e) {
+            $statusCode = ($e->getCode() >= 100 && $e->getCode() < 600) ? $e->getCode() : 500;
+
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage()
-            ], $e->getCode() ?: 500);
-        }
-    }
+            ], $statusCode);
+    }}
 
     /**
      * @OA\Delete(
